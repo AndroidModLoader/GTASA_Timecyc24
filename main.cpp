@@ -48,23 +48,7 @@ void (*CTimeCycle__FindTimeCycleBox)(CVector pos, CTimeCycleBox **box, float *in
 /////////////////////////////////////////////////////////////////////////////
 //////////////////////////////     Patches     //////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-uintptr_t Patch1_BackTo;
-extern "C" void Patch1(void)
-{
-    
-}
-__attribute__((optnone)) __attribute__((naked)) void Patch1_inject(void)
-{
-    asm volatile(
-        "str r1, [sp,#0x188]\n");
-    asm volatile(
-        "push {r0}\n");
-    asm volatile(
-        "mov r12, %0\n"
-        "pop {r0}\n"
-        "bx r12\n"
-    :: "r" (Patch1_BackTo));
-}
+
 /////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////     Hooks     ///////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -119,7 +103,7 @@ DECL_HOOKv(CColourSet_ctor, CColourSet* self, int h, int w)
     self->intensityLimit = CTimeCycle__m_nHighLightMinIntensity[h][w];
     self->waterfogalpha = CTimeCycle__m_nWaterFogAlpha[h][w];
     self->lodDistMult = 1.0f;
-    self->directionalmult = CTimeCycle__m_nDirectionalMult[h][w] / 100.0f;
+    self->directionalmult = (float)(CTimeCycle__m_nDirectionalMult[h][w]) / 100.0f;
 }
 DECL_HOOKv(CColourSet_Interpolate, CColourSet *self, CColourSet *a, CColourSet *b, float fa, float fb, bool ignoreSky)
 {
@@ -144,7 +128,7 @@ DECL_HOOKv(CColourSet_Interpolate, CColourSet *self, CColourSet *a, CColourSet *
         self->fluffycloudr = a->fluffycloudr * fa + b->fluffycloudr * fb;
         self->fluffycloudg = a->fluffycloudg * fa + b->fluffycloudg * fb;
         self->fluffycloudb = a->fluffycloudb * fa + b->fluffycloudb * fb;
-	}
+    }
     self->ambr = fa * a->ambr + fb * b->ambr;
     self->ambg = fa * a->ambg + fb * b->ambg;
     self->ambb = fa * a->ambb + fb * b->ambb;
@@ -222,11 +206,11 @@ DECL_HOOKv(SetConstantParametersForPostFX)
 }
 DECL_HOOKv(StartExtraColour, int extracolor, bool keepInter)
 {
-    *m_ExtraColourWeatherType = extracolor / NUMHOURS + EXTRASTART;
+    *m_ExtraColourWeatherType = (float)(extracolor) / NUMHOURS + EXTRASTART;
     *m_ExtraColour = extracolor % NUMHOURS;
     *m_bExtraColourOn = 1;
-    if(keepInter) *m_ExtraColourInter  = 0.0f;
-    else *m_ExtraColourInter  = 1.0f;
+    if(keepInter) *m_ExtraColourInter = 0.0f;
+    else *m_ExtraColourInter = 1.0f;
 }
 DECL_HOOKv(TimecycInit, bool __unused)
 {
@@ -390,10 +374,10 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
     }
     CTimeCycle__FindTimeCycleBox(pos, &weatherBox, &weatherBoxInterp, false, false, NULL);
 
-    time = *ms_nGameClockMinutes / 60.0f + *ms_nGameClockSeconds / 3600.0f + *ms_nGameClockHours;
+    time = (float)(*ms_nGameClockMinutes) / 60.0f + (float)(*ms_nGameClockSeconds) / 3600.0f + (float)(*ms_nGameClockHours);
     if(time >= 23.999f) time = 23.999f;
 
-    for(curHourSel = 0; time >= aTimecycleHours[curHourSel+1]; curHourSel++);
+    for(curHourSel = 0; time >= aTimecycleHours[curHourSel+1]; ++curHourSel);
     nextHourSel = (curHourSel + 1) % NUMHOURS;
     curHour = aTimecycleHours[curHourSel];
     nextHour = aTimecycleHours[curHourSel+1];
@@ -403,7 +387,7 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
     invWeatherInterp = 1.0f - weatherInterp;
     if(weatherBox)
     {
-        boxWeather = (weatherBox->m_index / NUMHOURS) + 21;
+        boxWeather = ((float)(weatherBox->m_index) / NUMHOURS) + 21;
         boxHour = weatherBox->m_index % 8;
     }
     CColourSet curold; HookOf_CColourSet_ctor(&curold, curHourSel, *OldWeatherType);
@@ -465,15 +449,15 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
     if(colorset->skybotb > 0xFF) colorset->skybotb = 0xFF;
 
     if(*m_FogReduction)
-        colorset->farclp = colorset->farclp > *m_FogReduction*10.15625 ? colorset->farclp : *m_FogReduction*10.15625;
+        colorset->farclp = colorset->farclp > *m_FogReduction * 10.15625 ? colorset->farclp : *m_FogReduction * 10.15625;
 
     *m_CurrentStoredValue = (*m_CurrentStoredValue + 1) & 0xF;
-	vec = &m_VectorToSun[*m_CurrentStoredValue];
-	sunAngle = (*ms_nGameClockMinutes + 60 * *ms_nGameClockHours + *ms_nGameClockSeconds/60.0f) * 0.0043633231;
-	vec->x = 0.7 + sin(sunAngle);
-	vec->y = -0.7;
-	vec->z = 0.2 - cos(sunAngle);
-	VectorNormalise(vec);
+    vec = &m_VectorToSun[*m_CurrentStoredValue];
+    sunAngle = (*ms_nGameClockMinutes + 60 * *ms_nGameClockHours + (float)(*ms_nGameClockSeconds) / 60.0f) * 0.0043633231;
+    vec->x = 0.7 + sin(sunAngle);
+    vec->y = -0.7;
+    vec->z = 0.2 - cos(sunAngle);
+    VectorNormalise(vec);
 
     if(weatherBox && weatherBox->m_index >= 0)
     {
@@ -518,14 +502,14 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
     }
 
     if(lodBox)
-        colorset->lodDistMult = colorset->lodDistMult*(1.0f-lodBoxInterp) + lodBox->m_lodMult/32.0f*lodBoxInterp;
+        colorset->lodDistMult = colorset->lodDistMult * (1.0f - lodBoxInterp) + (float)(lodBox->m_lodMult) / 32.0f * lodBoxInterp;
 
     if(farBox1 && farBox1->m_farClip < colorset->farclp)
         colorset->farclp = colorset->farclp*(1.0f-farBox1Interp) + farBox1->m_farClip*farBox1Interp;
     if(farBox2 && farBox2->m_farClip < colorset->farclp)
         colorset->farclp = colorset->farclp*(1.0f-farBox2Interp) + farBox2->m_farClip*farBox2Interp;
 
-    inc = *ms_fTimeStep/120.0f;
+    inc = *ms_fTimeStep / 120.0f;
     if(*m_bExtraColourOn){
         *m_ExtraColourInter += inc;
         if(*m_ExtraColourInter > 1.0f)
@@ -555,19 +539,19 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
 
     if(*WeatherInTunnelness > 0.0f)
     {
-        CColourSet tunnelset; HookOf_CColourSet_ctor(&tunnelset, 9 % NUMHOURS, 9 / NUMHOURS + EXTRASTART);
+        CColourSet tunnelset; HookOf_CColourSet_ctor(&tunnelset, 1, 22); //9 % NUMHOURS, 9 / NUMHOURS + EXTRASTART);
         HookOf_CColourSet_Interpolate(colorset, colorset, &tunnelset, 1.0f-*WeatherInTunnelness, *WeatherInTunnelness, 
             CTimeCycle__m_nSkyTopRed[*m_ExtraColour][*m_ExtraColourWeatherType] == 0 && 
             CTimeCycle__m_nSkyTopGreen[*m_ExtraColour][*m_ExtraColourWeatherType] == 0 && 
             CTimeCycle__m_nSkyTopBlue[*m_ExtraColour][*m_ExtraColourWeatherType] == 0);
     }
 
-    colorset->ambr /= 255;
-	colorset->ambg /= 255;
-	colorset->ambb /= 255;
-	colorset->ambobjr /= 255;
-	colorset->ambobjg /= 255;
-	colorset->ambobjb /= 255;
+    colorset->ambr /= 255.0f;
+    colorset->ambg /= 255.0f;
+    colorset->ambb /= 255.0f;
+    colorset->ambobjr /= 255.0f;
+    colorset->ambobjg /= 255.0f;
+    colorset->ambobjb /= 255.0f;
 
     CShadows__CalcPedShadowValues(
         m_VectorToSun[*m_CurrentStoredValue],
@@ -581,12 +565,12 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
     if((TheCamera->m_matCameraMatrix.up.z < -0.9 || !*bScriptsForceRain)
         && (CCullZones__PlayerNoRain() || CCullZones__CamNoRain() || *ms_runningCutscene))
     {
-        (*m_FogReduction)++;
+        ++(*m_FogReduction);
         if(*m_FogReduction > 64) *m_FogReduction = 64;
     }
     else
     {
-        (*m_FogReduction)--;
+        --(*m_FogReduction);
         if(*m_FogReduction < 0) *m_FogReduction = 0;
     }
 
@@ -598,18 +582,18 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
             colorset->farclp = 1000.0f;
     }
 
-    horiz = aTimecycleHorizon[curHourSel]*invTimeInterp + aTimecycleHorizon[nextHourSel]*timeInterp;
-	m_BelowHorizonGrey->red = m_CurrentColours.skybotr * *WeatherUnderWaterness + horiz*(1.0f - *WeatherUnderWaterness);
-	m_BelowHorizonGrey->green = m_CurrentColours.skybotg * *WeatherUnderWaterness + horiz*(1.0f - *WeatherUnderWaterness);
-	m_BelowHorizonGrey->blue = m_CurrentColours.skybotb * *WeatherUnderWaterness + horiz*(1.0f - *WeatherUnderWaterness);
+    horiz = aTimecycleHorizon[curHourSel] * invTimeInterp + aTimecycleHorizon[nextHourSel] * timeInterp;
+    m_BelowHorizonGrey->red = m_CurrentColours.skybotr * *WeatherUnderWaterness + horiz*(1.0f - *WeatherUnderWaterness);
+    m_BelowHorizonGrey->green = m_CurrentColours.skybotg * *WeatherUnderWaterness + horiz*(1.0f - *WeatherUnderWaterness);
+    m_BelowHorizonGrey->blue = m_CurrentColours.skybotb * *WeatherUnderWaterness + horiz*(1.0f - *WeatherUnderWaterness);
 
-	colorset->ambBeforeBrightnessr = colorset->ambr;
-	colorset->ambBeforeBrightnessg = colorset->ambg;
-	colorset->ambBeforeBrightnessb = colorset->ambb;
+    colorset->ambBeforeBrightnessr = colorset->ambr;
+    colorset->ambBeforeBrightnessg = colorset->ambg;
+    colorset->ambBeforeBrightnessb = colorset->ambb;
 
     if(*BrightnessPercent > 59)
     {
-        f = (float)(*BrightnessPercent - 60) / 20.0 + 1.0;
+        f = (float)(*BrightnessPercent - 60) / 20.0f + 1.0f;
         max = colorset->ambr;
         if(colorset->ambg > max)
             max = colorset->ambg;
@@ -622,7 +606,7 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
     }
     else
     {
-        f = (float)(*BrightnessPercent) / 60.0f * 0.8 + 0.2;
+        f = (float)(*BrightnessPercent) / 60.0f * 0.8f + 0.2f;
         colorset->ambr *= f;
         colorset->ambg *= f;
         colorset->ambb *= f;
@@ -631,7 +615,7 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
     if(f > 1.0)
     {
         float r, g, b;
-        f = (f-1.0f)*0.06;
+        f = (f - 1.0f) * 0.06f;
         max = colorset->ambr;
         if(colorset->ambg > max)
             max = colorset->ambg;
@@ -663,14 +647,21 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
         f = -(pos.x + 3000.0);
     else if(pos.x > 3000.0)
         f = pos.x - 3000.0;
+
     if(pos.y < -3000.0)
         f += -(pos.y + 3000.0);
     else if(pos.y > 3000.0)
         f += pos.y - 3000.0;
+
     if(f >= 1000.0)
         colorset->lodDistMult *= 2.0;
     else if(f > 0.0)
-        colorset->lodDistMult = (f/1000.0 + 1.0) * colorset->lodDistMult;
+        colorset->lodDistMult *= (f / 1000.0 + 1.0);
+
+    if(!colorset->ambr && !colorset->ambg && !colorset->ambg)
+    {
+        logger->Info("Zeroed ambient vals at: %s", __LINE__ );
+    }
 
     HookOf_SetConstantParametersForPostFX();
 }
@@ -690,7 +681,9 @@ DECL_HOOK(float, FindFarClipForCoors, CVector pos)
 }
 DECL_HOOKv(TimecycUpdate)
 {
-    CalcColoursForPoint(TheCamera->GetPosition(), &m_CurrentColours);
+    HookOf_CalcColoursForPoint(TheCamera->GetPosition(), &m_CurrentColours);
+
+    logger->Info("m_CurrentColours %f %f %f", m_CurrentColours.ambr, m_CurrentColours.ambg, m_CurrentColours.ambb);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -751,7 +744,7 @@ extern "C" void OnModPreLoad()
     SET_TO(BrightnessPercent,               pGTASA + 0x6E05FC);
 
     // GTA Patches
-    aml->Write(pGTASA + 0x676BC4, (uintptr_t)&m_CurrentColours, sizeof(void*));
+    aml->Write(pGTASA + 0x676BC4, (uintptr_t)&m_ptrCurrentColours, sizeof(void*));
 
     // GTA Hooks
     HOOK(CColourSet_ctor,                   aml->GetSym(hGTASA, "_ZN10CColourSetC2Eii"));

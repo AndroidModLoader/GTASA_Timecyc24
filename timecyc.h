@@ -55,3 +55,4 @@ extern uint8_t  CTimeCycle__m_nAmbientGreen[NUMHOURS][NUMWEATHERS];
 extern uint8_t  CTimeCycle__m_nAmbientRed[NUMHOURS][NUMWEATHERS];
 
 extern CColourSet m_CurrentColours;
+extern CColourSet* m_ptrCurrentColours;

@@ -53,3 +53,4 @@ uint8_t  CTimeCycle__m_nAmbientGreen[NUMHOURS][NUMWEATHERS];
 uint8_t  CTimeCycle__m_nAmbientRed[NUMHOURS][NUMWEATHERS];
 
 CColourSet m_CurrentColours;
+CColourSet* m_ptrCurrentColours = &m_CurrentColours;
