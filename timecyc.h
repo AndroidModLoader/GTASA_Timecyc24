@@ -53,6 +53,12 @@ extern uint8_t  CTimeCycle__m_nAmbientRed_Obj[NUMHOURS][NUMWEATHERS];
 extern uint8_t  CTimeCycle__m_nAmbientBlue[NUMHOURS][NUMWEATHERS];
 extern uint8_t  CTimeCycle__m_nAmbientGreen[NUMHOURS][NUMWEATHERS];
 extern uint8_t  CTimeCycle__m_nAmbientRed[NUMHOURS][NUMWEATHERS];
+// Mobile thingies
+extern RQVector CTimeCycle__m_vRedGrade[NUMHOURS][NUMWEATHERS];
+extern RQVector CTimeCycle__m_vGreenGrade[NUMHOURS][NUMWEATHERS];
+extern RQVector CTimeCycle__m_vBlueGrade[NUMHOURS][NUMWEATHERS];
 
 extern CColourSet m_CurrentColours;
 extern CColourSet* m_ptrCurrentColours;
+
+void PatchTheValues();
