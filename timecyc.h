@@ -58,6 +58,5 @@ extern RQVector CTimeCycle__m_vGreenGrade[NUMHOURS][NUMWEATHERS];
 extern RQVector CTimeCycle__m_vBlueGrade[NUMHOURS][NUMWEATHERS];
 
 extern CColourSet m_CurrentColours;
-extern CColourSet* m_ptrCurrentColours;
 
 void PatchTheValues();

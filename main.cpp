@@ -404,7 +404,6 @@ DECL_HOOKv(TimecycInit, bool __unused)
 
     /* Colorcycle Section */
 
-    RQVector someSortOfDefault = {0.67f, 0.67f, 0.67f, 0.67f};
     RQVector redGradeNewVal, greenGradeNewVal, blueGradeNewVal;
 
     CFileMgr__SetDir("DATA");
@@ -440,10 +439,7 @@ DECL_HOOKv(TimecycInit, bool __unused)
 
     /* Function end Section */
 
-    float c = cos(0.7853981852531433);
-    m_vecDirnLightToSun->x = cos(-2.356194496154785) * c;
-    m_vecDirnLightToSun->y = sin(-2.356194496154785) * c;
-    m_vecDirnLightToSun->z = sin(0.7853981852531433);
+    *m_vecDirnLightToSun = {-0.5f, -0.5f, 0.707107f};
     VectorNormalise(m_vecDirnLightToSun);
     *m_FogReduction = 0;
     *m_bExtraColourOn = 0;
@@ -468,8 +464,6 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
     float horiz;
     float brightness;
     float max, f;
-
-    if(!colorset->ambr && !colorset->ambg && !colorset->ambg) logger->Info("Zeroed ambient vals at line %d", __LINE__ );
 
     CTimeCycle__FindTimeCycleBox(pos, &lodBox, &lodBoxInterp, true, false, NULL);
     CTimeCycle__FindTimeCycleBox(pos, &farBox1, &farBox1Interp, false, true, NULL);
@@ -554,8 +548,6 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
     HookOf_CColourSet_Interpolate(&newInterp, &curnew, &nextnew, invTimeInterp, timeInterp, false);
     HookOf_CColourSet_Interpolate(colorset, &oldInterp, &newInterp, invWeatherInterp, weatherInterp, false);
 
-    if(!colorset->ambr && !colorset->ambg && !colorset->ambg) logger->Info("Zeroed ambient vals at line %d", __LINE__ );
-
     lightMult = (1.0f / *CoronasLightsMult + 3.0f) * 0.25f;
     colorset->skytopr *= lightMult;
     colorset->skytopg *= lightMult;
@@ -623,8 +615,6 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
         colorset->postfx2a = colorset->postfx2a*invboxf + CTimeCycle__m_fPostFx2Alpha[boxHour][boxWeather]*boxf;
     }
 
-    if(!colorset->ambr && !colorset->ambg && !colorset->ambg) logger->Info("Zeroed ambient vals at line %d", __LINE__ );
-
     if(lodBox)
         colorset->lodDistMult = colorset->lodDistMult * (1.0f - lodBoxInterp) + (float)(lodBox->m_lodMult) / 32.0f * lodBoxInterp;
 
@@ -652,8 +642,6 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
             CTimeCycle__m_nSkyTopBlue[*m_ExtraColour][*m_ExtraColourWeatherType] == 0);
     }
 
-    if(!colorset->ambr && !colorset->ambg && !colorset->ambg) logger->Info("Zeroed ambient vals at line %d", __LINE__ );
-
     if(*WeatherUnderWaterness > 0.0f)
     {
         CColourSet curuwset; HookOf_CColourSet_ctor(&curuwset, curHourSel, 20);
@@ -662,8 +650,6 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
         HookOf_CColourSet_Interpolate(&tmpset, &curuwset, &nextuwset, invTimeInterp, timeInterp, false);
         HookOf_CColourSet_Interpolate(colorset, colorset, &tmpset, 1.0f-*WeatherUnderWaterness, *WeatherUnderWaterness, false);
     }
-
-    if(!colorset->ambr && !colorset->ambg && !colorset->ambg) logger->Info("Zeroed ambient vals at line %d", __LINE__ );
 
     if(*WeatherInTunnelness > 0.0f)
     {
@@ -674,8 +660,6 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
             CTimeCycle__m_nSkyTopBlue[*m_ExtraColour][*m_ExtraColourWeatherType] == 0);
     }
     
-    if(!colorset->ambr && !colorset->ambg && !colorset->ambg) logger->Info("Zeroed ambient vals at line %d", __LINE__ );
-
     colorset->ambr /= 255.0f;
     colorset->ambg /= 255.0f;
     colorset->ambb /= 255.0f;
@@ -742,8 +726,6 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
         colorset->ambb *= f;
     }
 
-    if(!colorset->ambr && !colorset->ambg && !colorset->ambg) logger->Info("Zeroed ambient vals at line %d", __LINE__ );
-
     if(f > 1.0)
     {
         float r, g, b;
@@ -790,11 +772,7 @@ DECL_HOOKv(CalcColoursForPoint, CVector pos, CColourSet* colorset)
     else if(f > 0.0)
         colorset->lodDistMult *= (f / 1000.0 + 1.0);
 
-    if(!colorset->ambr && !colorset->ambg && !colorset->ambg) logger->Info("Zeroed ambient vals at line %d", __LINE__ );
-
     HookOf_SetConstantParametersForPostFX();
-
-    if(!colorset->ambr && !colorset->ambg && !colorset->ambg) logger->Info("Zeroed ambient vals at line %d", __LINE__ );
 }
 DECL_HOOK(float, FindFarClipForCoors, CVector pos)
 {
@@ -873,7 +851,6 @@ extern "C" void OnModPreLoad()
     SET_TO(BrightnessPercent,               pGTASA + 0x6E05FC);
 
     // GTA Patches
-    aml->Write(pGTASA + 0x676BC4, (uintptr_t)&m_ptrCurrentColours, sizeof(void*));
     PatchTheValues();
     aml->Write(pGTASA + 0x41F106, (uintptr_t)"\x18", sizeof(char));
     aml->Write(pGTASA + 0x41FD4A, (uintptr_t)"\x00", sizeof(char));
@@ -884,6 +861,7 @@ extern "C" void OnModPreLoad()
     aml->Redirect(pGTASA + 0x41F0C0 + 0x1, (uintptr_t)ModuloPatch_inject);
     aml->PlaceNOP(pGTASA + 0x41F0D6 + 0x1, 2);
     aml->PlaceNOP(pGTASA + 0x41F0E4 + 0x1, 2);
+    aml->Write(pGTASA + 0x41F116, (uintptr_t)"\x01\x46\x00\xBF\x00\xBF", 6);
 
     HorizontAngles_BackTo = pGTASA + 0x41FFCC + 0x1;
     aml->Redirect(pGTASA + 0x41FFB8 + 0x1, (uintptr_t)HorizontAngles_inject);
