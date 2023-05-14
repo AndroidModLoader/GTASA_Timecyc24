@@ -2,7 +2,6 @@
 
 #define NUMWEATHERS 23
 #define NUMHOURS 24
-#define EXTRASTART 21
 
 extern uint8_t  CTimeCycle__m_nDirectionalMult[NUMHOURS][NUMWEATHERS];
 extern uint8_t  CTimeCycle__m_nWaterFogAlpha[NUMHOURS][NUMWEATHERS];

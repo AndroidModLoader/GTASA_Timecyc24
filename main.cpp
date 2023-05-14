@@ -13,8 +13,9 @@ END_DEPLIST()
 /////////////////////////////////////////////////////////////////////////////
 uintptr_t pGTASA;
 void* hGTASA;
-uint8_t aTimecycleHours[25+1] = { 0xFF, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24 };
-uint8_t aTimecycleHorizon[24] = { 30, 30, 30, 30, 30, 30, 30, 50, 52, 54, 56, 58, 60, 60, 60, 60, 60, 60, 60, 60, 50, 42, 35, 32 };
+
+uint8_t aTimecycleHours[NUMHOURS+1] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24 };
+uint8_t aTimecycleHorizon[NUMHOURS] = { 30, 30, 30, 30, 30, 30, 30, 50, 52, 54, 56, 58, 60, 60, 60, 60, 60, 60, 60, 60, 50, 42, 35, 32 };
 
 /////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////     Vars      ///////////////////////////////
@@ -49,13 +50,13 @@ void (*CTimeCycle__FindTimeCycleBox)(CVector pos, CTimeCycleBox **box, float *in
 //////////////////////////////     Patches     //////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 uintptr_t ModuloPatch_BackTo;
-extern "C" int ModuloPatch_patch(int unmoduledVal)
+extern "C" int ModuloPatch_patch(int __fillerVar, int unmoduledVal)
 {
     return (unmoduledVal % NUMHOURS);
 }
 __attribute__((optnone)) __attribute__((naked)) void ModuloPatch_inject(void)
 {
-    asm volatile(
+    /*asm volatile(
         "SUBS            R0, R1, R0\n"
         "MOV.W           R1, R10,ASR#31\n"
         "VCVT.F32.U32    S2, S2\n"
@@ -65,7 +66,16 @@ __attribute__((optnone)) __attribute__((naked)) void ModuloPatch_inject(void)
         "PUSH {R0,R2-R11}\n"
         "MOV R0, R1\n"
         "BL ModuloPatch_patch\n"
-        "MOV R1, R0\n");
+        "MOV R1, R0\n");*/
+    asm volatile(
+        "SUBS            R0, R1, R0\n"
+        "MOV             R1, R10\n"
+        "VCVT.F32.U32    S2, S2\n"
+    );
+    asm volatile(
+        "PUSH            {R0,R2-R11}\n"
+        "BL              ModuloPatch_patch\n"
+        "MOV             R1, R0\n");
     asm volatile(
         "MOV R12, %0\n"
         "POP {R0,R2-R11}\n"
@@ -269,7 +279,7 @@ DECL_HOOKv(SetConstantParametersForPostFX)
 }
 DECL_HOOKv(StartExtraColour, int extracolor, bool keepInter)
 {
-    *m_ExtraColourWeatherType = (float)(extracolor) / NUMHOURS + EXTRASTART;
+    *m_ExtraColourWeatherType = (float)(extracolor) / NUMHOURS + WEATHER_EXTRA_START;
     *m_ExtraColour = extracolor % NUMHOURS;
     *m_bExtraColourOn = 1;
     if(keepInter) *m_ExtraColourInter = 0.0f;
@@ -414,21 +424,16 @@ DECL_HOOKv(TimecycInit, bool __unused)
             // Some sort of additional logic
             float redSum = redGradeNewVal.r + redGradeNewVal.g + redGradeNewVal.b - 1.7f;
             if(redSum > 0) redGradeNewVal.a -= redSum * 0.13f;
-            redGradeNewVal *= 0.67f;
 
             float greenSum = greenGradeNewVal.r + greenGradeNewVal.g + greenGradeNewVal.b - 1.7f;
             if(greenSum > 0) greenGradeNewVal.a -= greenSum * 0.13f;
-            greenGradeNewVal *= 0.67f;
 
             float blueSum = blueGradeNewVal.r + blueGradeNewVal.g + blueGradeNewVal.b - 1.7f;
             if(blueSum > 0) blueGradeNewVal.a -= blueSum * 0.13f;
-            blueGradeNewVal *= 0.67f;
 
-
-
-            CTimeCycle__m_vRedGrade[w][h] = redGradeNewVal;
-            CTimeCycle__m_vGreenGrade[w][h] = greenGradeNewVal;
-            CTimeCycle__m_vBlueGrade[w][h] = blueGradeNewVal;
+            CTimeCycle__m_vRedGrade[w][h] = redGradeNewVal * 0.666666666667f;
+            CTimeCycle__m_vGreenGrade[w][h] = greenGradeNewVal * 0.666666666667f;
+            CTimeCycle__m_vBlueGrade[w][h] = blueGradeNewVal * 0.666666666667f;
         }
     }
     CFileMgr__CloseFile(fd);
@@ -874,10 +879,15 @@ extern "C" void OnModPreLoad()
     aml->Write(pGTASA + 0x41FD4A, (uintptr_t)"\x00", sizeof(char));
     aml->Write(pGTASA + 0x41FD4C, (uintptr_t)"\x15", sizeof(char));
     //aml->Write(pGTASA + 0x471438 + 0x2, (uintptr_t)"\x18", sizeof(char)); // Timecyc::Init
+
     ModuloPatch_BackTo = pGTASA + 0x41F0CE + 0x1;
     aml->Redirect(pGTASA + 0x41F0C0 + 0x1, (uintptr_t)ModuloPatch_inject);
+    aml->PlaceNOP(pGTASA + 0x41F0D6 + 0x1, 2);
+    aml->PlaceNOP(pGTASA + 0x41F0E4 + 0x1, 2);
+
     HorizontAngles_BackTo = pGTASA + 0x41FFCC + 0x1;
     aml->Redirect(pGTASA + 0x41FFB8 + 0x1, (uintptr_t)HorizontAngles_inject);
+
     Hours_BackTo = pGTASA + 0x41F082 + 0x1;
     aml->Redirect(pGTASA + 0x41F076 + 0x1, (uintptr_t)Hours_inject);
 
