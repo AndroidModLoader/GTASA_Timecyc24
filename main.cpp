@@ -13,7 +13,7 @@ END_DEPLIST()
 /////////////////////////////////////////////////////////////////////////////
 uintptr_t pGTASA;
 void* hGTASA;
-uint8_t aTimecycleHours[25] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24 };
+uint8_t aTimecycleHours[25+1] = { 0xFF, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24 };
 uint8_t aTimecycleHorizon[24] = { 30, 30, 30, 30, 30, 30, 30, 50, 52, 54, 56, 58, 60, 60, 60, 60, 60, 60, 60, 60, 50, 42, 35, 32 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -71,6 +71,45 @@ __attribute__((optnone)) __attribute__((naked)) void ModuloPatch_inject(void)
         "POP {R0,R2-R11}\n"
         "BX R12\n"
     :: "r" (ModuloPatch_BackTo));
+}
+
+uintptr_t HorizontAngles_BackTo;
+__attribute__((optnone)) __attribute__((naked)) void HorizontAngles_inject(void)
+{
+    asm volatile(
+        "ADD.W R12, R11, #0x18\n");
+    asm volatile(
+        "MOV R0, %0\n"
+    :: "r" (&aTimecycleHorizon));
+    asm volatile(
+        "LDRB R1, [R0,R1]\n"
+        "ADD R0, R10\n"
+        "LDRB R0, [R0,#-1]\n"
+        "VMOV S0, R1\n"
+        "PUSH {R0}\n");
+    asm volatile(
+        "MOV R1, %0\n"
+        "POP {R0}\n"
+        "BX R1\n"
+    :: "r" (HorizontAngles_BackTo));
+}
+
+uintptr_t Hours_BackTo;
+__attribute__((optnone)) __attribute__((naked)) void Hours_inject(void)
+{
+    asm volatile(
+        "VCVT.F32.U32 S4, S4\n"
+        "VADD.F32 S0, S0, S4\n");
+    asm volatile(
+        "MOV R0, %0\n"
+    :: "r" (&aTimecycleHours));
+    asm volatile(
+        "PUSH {R0}\n");
+    asm volatile(
+        "MOV R1, %0\n"
+        "POP {R0}\n"
+        "BX R1\n"
+    :: "r" (Hours_BackTo));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -837,6 +876,10 @@ extern "C" void OnModPreLoad()
     //aml->Write(pGTASA + 0x471438 + 0x2, (uintptr_t)"\x18", sizeof(char)); // Timecyc::Init
     ModuloPatch_BackTo = pGTASA + 0x41F0CE + 0x1;
     aml->Redirect(pGTASA + 0x41F0C0 + 0x1, (uintptr_t)ModuloPatch_inject);
+    HorizontAngles_BackTo = pGTASA + 0x41FFCC + 0x1;
+    aml->Redirect(pGTASA + 0x41FFB8 + 0x1, (uintptr_t)HorizontAngles_inject);
+    Hours_BackTo = pGTASA + 0x41F082 + 0x1;
+    aml->Redirect(pGTASA + 0x41F076 + 0x1, (uintptr_t)Hours_inject);
 
     // GTA Hooks
     //HOOK(CColourSet_ctor,                   aml->GetSym(hGTASA, "_ZN10CColourSetC2Eii"));
