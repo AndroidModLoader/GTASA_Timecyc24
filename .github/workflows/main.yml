@@ -13,6 +13,12 @@ jobs:
 
     - name: Checkout repository...
       uses: actions/checkout@v3
+        
+    - name: Setup SSH keys...
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: |
+          ${{ secrets.SSH }}
 
     - name: Download AndroidModLoader`s mod template...
       uses: wei/wget@v1
@@ -23,11 +29,11 @@ jobs:
       run: |
         unzip ./AML_src.zip
         mv ./AndroidModLoader-main/mod ./mod
-
-    - name: Get SAUtils...
-      uses: wei/wget@v1
-      with:
-        args: -O ./isautils.h https://github.com/AndroidModLoader/SAUtils/raw/main/isautils.h
+          
+    - name: Get GTA:SA structures file (private)...
+      run: |
+        git clone ssh://git@github.com/RusJJ/GTASAAndroid_Structs.git ./structs
+        mv ./structs/* ./
 
     - name: Install Android NDK (r24)...
       uses: nttld/setup-ndk@v1.2.0
