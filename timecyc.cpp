@@ -56,8 +56,6 @@ RQVector CTimeCycle__m_vRedGrade[NUMHOURS][NUMWEATHERS];
 RQVector CTimeCycle__m_vGreenGrade[NUMHOURS][NUMWEATHERS];
 RQVector CTimeCycle__m_vBlueGrade[NUMHOURS][NUMWEATHERS];
 
-CColourSet m_CurrentColours;
-
 extern uintptr_t pGTASA;
 
 inline void WritePtr(uintptr_t addr, uintptr_t* ptrAddr, size_t len)
@@ -67,7 +65,6 @@ inline void WritePtr(uintptr_t addr, uintptr_t* ptrAddr, size_t len)
 }
 void PatchTheValues()
 {
-    WritePtr(pGTASA + 0x676BC4, (uintptr_t*)&m_CurrentColours, sizeof(void*));
     WritePtr(pGTASA + 0x678CE4, (uintptr_t*)&CTimeCycle__m_nDirectionalMult, sizeof(void*));
     WritePtr(pGTASA + 0x678F74, (uintptr_t*)&CTimeCycle__m_nWaterFogAlpha, sizeof(void*));
     WritePtr(pGTASA + 0x67619C, (uintptr_t*)&CTimeCycle__m_nHighLightMinIntensity, sizeof(void*));

@@ -96,15 +96,9 @@ __attribute__((optnone)) __attribute__((naked)) void Hours_Inject(void)
 }
 
 
-uintptr_t ModuloPatch_BackTo, ModuloPatch2_BackTo;
+uintptr_t ModuloPatch1_BackTo, ModuloPatch2_BackTo;
 extern "C" int ModuloPatch_patch(int unmoduledVal) { return (unmoduledVal % NUMHOURS); }
-__attribute__((optnone)) __attribute__((naked)) void TEST(void)
-{
-    asm volatile(
-        "CMP.W           R8, #8832"
-    );
-}
-__attribute__((optnone)) __attribute__((naked)) void ModuloPatch_inject(void)
+__attribute__((optnone)) __attribute__((naked)) void ModuloPatch1_inject(void)
 {
     asm volatile(
         "SUBS            R0, R1, R0\n"
@@ -122,7 +116,7 @@ __attribute__((optnone)) __attribute__((naked)) void ModuloPatch_inject(void)
         "POP {R0}\n"
         "POP {R2-R11}\n"
         "BX R12\n"
-    :: "r" (ModuloPatch_BackTo));
+    :: "r" (ModuloPatch1_BackTo));
 }
 __attribute__((optnone)) __attribute__((naked)) void ModuloPatch2_inject(void)
 {
@@ -186,17 +180,18 @@ extern "C" void OnModPreLoad()
     aml->Redirect(pGTASA + 0x41FFB8 + 0x1, (uintptr_t)HorizontAngles_Inject);
     aml->Redirect(pGTASA + 0x41F076 + 0x1, (uintptr_t)Hours_Inject);
 
-    ModuloPatch_BackTo = pGTASA + 0x41F0D2 + 0x1;
+    ModuloPatch1_BackTo = pGTASA + 0x41F0D2 + 0x1;
     ModuloPatch2_BackTo = pGTASA + 0x41F122 + 0x1;
-    aml->Redirect(pGTASA + 0x41F0C0 + 0x1, (uintptr_t)ModuloPatch_inject);
+    aml->Redirect(pGTASA + 0x41F0C0 + 0x1, (uintptr_t)ModuloPatch1_inject);
     aml->Redirect(pGTASA + 0x41F112 + 0x1, (uintptr_t)ModuloPatch2_inject);
 
     aml->Write(pGTASA + 0x41F106, (uintptr_t)"\x18", sizeof(char));
-    aml->Write(pGTASA + 0x41FD4A, (uintptr_t)"\x00", sizeof(char));
-    aml->Write(pGTASA + 0x41FD4C, (uintptr_t)"\x15", sizeof(char));
+    //aml->Write(pGTASA + 0x41FD4A, (uintptr_t)"\x00", sizeof(char));
+    //aml->Write(pGTASA + 0x41FD4C, (uintptr_t)"\x15", sizeof(char));
 
     aml->PlaceNOP(pGTASA + 0x41F0D6, 2);
     aml->PlaceNOP(pGTASA + 0x41F0E4, 2);
+    aml->PlaceNOP(pGTASA + 0x41F108, 2);
 
     // - CTimeCycle::StartExtraColour
     HOOK(StartExtraColour, aml->GetSym(hGTASA, "_ZN10CTimeCycle16StartExtraColourEib"));
