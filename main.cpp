@@ -3,7 +3,7 @@
 
 #include "timecyc.h"
 
-MYMOD(net.rusjj.timecyc24, GTASA Timecyc24, 1.0, GTAmodding & RusJJ)
+MYMOD(net.rusjj.timecyc24, GTASA Timecyc24, 1.0.1, GTAmodding & RusJJ)
 BEGIN_DEPLIST()
     ADD_DEPENDENCY_VER(net.rusjj.aml, 1.0.2.1)
 END_DEPLIST()
@@ -27,13 +27,20 @@ int32_t *m_ExtraColourWeatherType, *m_ExtraColour, *m_bExtraColourOn;
 ///////////////////////////////     Funcs     ///////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 int (*CFileMgr__OpenFile)(const char *path, const char *mode);
+char* (*CFileLoader__LoadLine)(int fd);
 
 /////////////////////////////////////////////////////////////////////////////
 //////////////////////////////     Patches     //////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-uintptr_t TimecycInit1_BackTo, TimecycInit2_BackTo;
+uintptr_t TimecycInit1_BackTo, TimecycInit2_BackTo, TimecycInit3_BackTo;
 extern "C" int TimecycInit1_Patch(void) { return CFileMgr__OpenFile("TIMECYC_24H.DAT", "rb"); }
 extern "C" int TimecycInit2_Patch(void) { return CFileMgr__OpenFile("DATA/COLORCYCLE_24H.DAT", "rb"); }
+extern "C" char* TimecycInit3_Patch(int fd)
+{
+    char* line = NULL;
+    while(line = CFileLoader__LoadLine(fd), line) if(line[0] != '/' && line[0] != '\0') break;
+    return line;
+}
 __attribute__((optnone)) __attribute__((naked)) void TimecycInit1_Inject(void)
 {
     asm volatile(
@@ -55,6 +62,22 @@ __attribute__((optnone)) __attribute__((naked)) void TimecycInit2_Inject(void)
         "POP             {R0}\n"
         "BX              R12\n"
     :: "r" (TimecycInit2_BackTo));
+}
+__attribute__((optnone)) __attribute__((naked)) void TimecycInit3_Inject(void)
+{
+    asm volatile(
+        "MOV             R0, R11\n"
+        "ADD.W           R5, R1, R8\n"
+        "ADD.W           R4, R5, #0xC\n"
+        "PUSH            {R1-R11}\n"
+        "BL              TimecycInit3_Patch\n"
+        "POP             {R1-R11}\n"
+        "PUSH            {R0}\n");
+    asm volatile(
+        "MOV             R12, %0\n"
+        "POP             {R0}\n"
+        "BX              R12\n"
+    :: "r" (TimecycInit3_BackTo));
 }
 
 
@@ -155,6 +178,7 @@ extern "C" void OnModPreLoad()
     
     // GTA Funcs
     SET_TO(CFileMgr__OpenFile,              aml->GetSym(hGTASA, "_ZN8CFileMgr8OpenFileEPKcS1_"));
+    SET_TO(CFileLoader__LoadLine,           aml->GetSym(hGTASA, "_ZN11CFileLoader8LoadLineEj"));
 
     // GTA Variables
     SET_TO(m_ExtraColourInter,              aml->GetSym(hGTASA, "_ZN10CTimeCycle18m_ExtraColourInterE"));
@@ -171,8 +195,10 @@ extern "C" void OnModPreLoad()
     aml->Write(pGTASA + 0x47159C, (uintptr_t)"\xB8\xF5\x0A\x5F", 4);
     TimecycInit1_BackTo = pGTASA + 0x470E62 + 0x1;
     TimecycInit2_BackTo = pGTASA + 0x47145C + 0x1;
+    TimecycInit3_BackTo = pGTASA + 0x4714BE + 0x1;
     aml->Redirect(pGTASA + 0x470E56 + 0x1, (uintptr_t)TimecycInit1_Inject);
     aml->Redirect(pGTASA + 0x471454 + 0x1, (uintptr_t)TimecycInit2_Inject);
+    aml->Redirect(pGTASA + 0x4714B0 + 0x1, (uintptr_t)TimecycInit3_Inject);
 
     // - CTimeCycle::CalcColoursForPoint
     HorizontAngles_BackTo = pGTASA + 0x41FFCC + 0x1;
