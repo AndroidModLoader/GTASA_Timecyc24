@@ -1,4 +1,11 @@
-#include "GTASA_STRUCTS.h"
+#ifdef AML32
+    #include "GTASA_STRUCTS.h"
+    #define BYVER(__for32, __for64) (__for32)
+#else
+    #include "GTASA_STRUCTS_210.h"
+    #define BYVER(__for32, __for64) (__for64)
+#endif
+#define sizeofA(__aVar)  ((int)(sizeof(__aVar)/sizeof(__aVar[0])))
 
 #define NUMWEATHERS 23
 #define NUMHOURS 24

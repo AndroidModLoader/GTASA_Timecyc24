@@ -3,7 +3,7 @@
 
 #include "timecyc.h"
 
-MYMOD(net.rusjj.timecyc24, GTASA Timecyc24, 1.0.1, GTAmodding & RusJJ)
+MYMOD(net.rusjj.timecyc24, GTASA Timecyc24, 1.1, GTAmodding & RusJJ)
 BEGIN_DEPLIST()
     ADD_DEPENDENCY_VER(net.rusjj.aml, 1.0.2.1)
 END_DEPLIST()
@@ -220,5 +220,5 @@ extern "C" void OnModPreLoad()
     aml->PlaceNOP(pGTASA + 0x41F108, 2);
 
     // - CTimeCycle::StartExtraColour
-    HOOK(StartExtraColour, aml->GetSym(hGTASA, "_ZN10CTimeCycle16StartExtraColourEib"));
+    HOOKPLT(StartExtraColour, pGTASA + BYVER(0x671F24, 0x843670));
 }
