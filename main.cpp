@@ -3,9 +3,10 @@
 
 #include "timecyc.h"
 
-MYMOD(net.rusjj.timecyc24, GTASA Timecyc24, 1.1, GTAmodding & RusJJ)
+MYMOD(net.rusjj.timecyc24, GTASA Timecyc24, 1.2, GTAmodding & RusJJ)
+NEEDGAME(com.rockstargames.gtasa)
 BEGIN_DEPLIST()
-    ADD_DEPENDENCY_VER(net.rusjj.aml, 1.0.2.1)
+    ADD_DEPENDENCY_VER(net.rusjj.aml, 1.2.2)
 END_DEPLIST()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -14,7 +15,7 @@ END_DEPLIST()
 uintptr_t pGTASA;
 void* hGTASA;
 
-uint8_t aTimecycleHours[NUMHOURS+4] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 0, 0, 0 };
+uint8_t aTimecycleHours[NUMHOURS+1] = {  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24 };
 uint8_t aTimecycleHorizon[NUMHOURS] = { 30, 30, 30, 30, 30, 30, 30, 50, 52, 54, 56, 58, 60, 60, 60, 60, 60, 60, 60, 60, 50, 42, 35, 32 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -26,15 +27,15 @@ int32_t *m_ExtraColourWeatherType, *m_ExtraColour, *m_bExtraColourOn;
 /////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////     Funcs     ///////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-int (*CFileMgr__OpenFile)(const char *path, const char *mode);
+uintptr_t (*CFileMgr__OpenFile)(const char *path, const char *mode);
 char* (*CFileLoader__LoadLine)(uintptr_t fd);
 
 /////////////////////////////////////////////////////////////////////////////
 //////////////////////////////     Patches     //////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 uintptr_t TimecycInit1_BackTo, TimecycInit2_BackTo, TimecycInit3_BackTo;
-extern "C" int TimecycInit1_Patch(void) { return CFileMgr__OpenFile("TIMECYC_24H.DAT", "rb"); }
-extern "C" int TimecycInit2_Patch(void) { return CFileMgr__OpenFile("DATA/COLORCYCLE_24H.DAT", "rb"); }
+extern "C" uintptr_t TimecycInit1_Patch(void) { return CFileMgr__OpenFile("TIMECYC_24H.DAT", "rb"); }
+extern "C" uintptr_t TimecycInit2_Patch(void) { return CFileMgr__OpenFile("DATA/COLORCYCLE_24H.DAT", "rb"); }
 extern "C" char* TimecycInit3_Patch(uintptr_t fd)
 {
     char* line = NULL;
@@ -113,9 +114,9 @@ __attribute__((optnone)) __attribute__((naked)) void HorizontAngles_Inject(void)
         "MOV R0, %0\n"
     :: "r" (&aTimecycleHorizon));
     asm volatile(
-        "LDRB R1, [R0,R1]\n"
+        "LDRB R1, [R0, R1]\n"
         "ADD R0, R10\n"
-        "LDRB R0, [R0,#-1]\n"
+        "LDRB R0, [R0, #-1]\n"
         "VMOV S0, R1\n"
         "PUSH {R0}\n");
     asm volatile(
@@ -145,7 +146,7 @@ __attribute__((optnone)) __attribute__((naked)) void HorizontAngles_Inject(void)
 {
     asm volatile("MOV X16, %0" :: "r"(HorizontAngles_BackTo));
     asm volatile("MOV X9, %0" :: "r"(&aTimecycleHorizon));
-    asm("LDR B2, [X8,W20,SXTW]");
+    asm("LDR B2, [X8, W20, SXTW]");
     asm volatile("MOV X20, %0" :: "r"(m_CurrentColours));
     asm("LDR S1, [X22]\nBR X16");
 }
@@ -210,21 +211,16 @@ __attribute__((optnone)) __attribute__((naked)) void ModuloPatch2_Inject(void)
     asm volatile("MOV X16, %0" :: "r"(ModuloPatch2_BackTo));
     asm("MOV W8, W0\nBR X16");
 }
-__attribute__((optnone)) __attribute__((naked)) void adadad(void)
-{
-    asm("CMP X28, X18");
-}
 #endif
 /////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////     Hooks     ///////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 DECL_HOOKv(StartExtraColour, int extracolor, bool keepInter)
 {
-    *m_ExtraColourWeatherType = (float)(extracolor) / NUMHOURS + WEATHER_EXTRA_START;
-    *m_ExtraColour = extracolor % NUMHOURS;
+    *m_ExtraColourWeatherType = (float)(extracolor) / (float)(NUMHOURS) + WEATHER_EXTRA_START;
+    *m_ExtraColour = extracolor % (NUMHOURS);
     *m_bExtraColourOn = 1;
-    if(keepInter) *m_ExtraColourInter = 0.0f;
-    else *m_ExtraColourInter = 1.0f;
+    *m_ExtraColourInter = (keepInter) ? 0.0f : 1.0f;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -239,7 +235,7 @@ extern "C" void OnModPreLoad()
     
     // GTA Funcs
     SET_TO(CFileMgr__OpenFile,              aml->GetSym(hGTASA, "_ZN8CFileMgr8OpenFileEPKcS1_"));
-    SET_TO(CFileLoader__LoadLine,           aml->GetSym(hGTASA, BYVER("_ZN11CFileLoader8LoadLineEj", "_ZN11CFileLoader8LoadLineEy")));
+    SET_TO(CFileLoader__LoadLine,           aml->GetSym(hGTASA, BYBIT("_ZN11CFileLoader8LoadLineEj", "_ZN11CFileLoader8LoadLineEy")));
 
     // GTA Variables
     SET_TO(m_ExtraColourInter,              aml->GetSym(hGTASA, "_ZN10CTimeCycle18m_ExtraColourInterE"));
@@ -253,38 +249,38 @@ extern "C" void OnModPreLoad()
     PatchTheValues();
 
     // - CTimeCycle::Initialise
-    aml->Write(pGTASA + BYVER(0x471438 + 0x2, 0x55D770 + 0x1), BYVER("\x18", "\x62"), 1);
-    aml->Write(pGTASA + BYVER(0x47159C, 0x55DCC4), BYVER("\xB8\xF5\x0A\x5F", "\x9F\x03\x12\xEB"), 4);
-    TimecycInit1_BackTo = pGTASA + BYVER(0x470E62 + 0x1, 0x55D4F8);
-    TimecycInit2_BackTo = pGTASA + BYVER(0x47145C + 0x1, 0x55DB4C);
-    TimecycInit3_BackTo = pGTASA + BYVER(0x4714BE + 0x1, 0x55DBC4);
-    aml->Redirect(pGTASA + BYVER(0x470E56 + 0x1, 0x55D4E4), (uintptr_t)TimecycInit1_Inject);
-    aml->Redirect(pGTASA + BYVER(0x471454 + 0x1, 0x55DB38), (uintptr_t)TimecycInit2_Inject);
-    aml->Redirect(pGTASA + BYVER(0x4714B0 + 0x1, 0x55DBB4), (uintptr_t)TimecycInit3_Inject);
+    aml->Write(pGTASA + BYBIT(0x471438 + 0x2, 0x55D770 + 0x1), BYBIT("\x18", "\x62"), 1);
+    aml->Write(pGTASA + BYBIT(0x47159C, 0x55DCC4), BYBIT("\xB8\xF5\x0A\x5F", "\x9F\x03\x12\xEB"), 4);
+    TimecycInit1_BackTo = pGTASA + BYBIT(0x470E62 + 0x1, 0x55D4F8);
+    TimecycInit2_BackTo = pGTASA + BYBIT(0x47145C + 0x1, 0x55DB4C);
+    TimecycInit3_BackTo = pGTASA + BYBIT(0x4714BE + 0x1, 0x55DBC4);
+    aml->Redirect(pGTASA + BYBIT(0x470E56 + 0x1, 0x55D4E4), (uintptr_t)TimecycInit1_Inject);
+    aml->Redirect(pGTASA + BYBIT(0x471454 + 0x1, 0x55DB38), (uintptr_t)TimecycInit2_Inject);
+    aml->Redirect(pGTASA + BYBIT(0x4714B0 + 0x1, 0x55DBB4), (uintptr_t)TimecycInit3_Inject);
 
     // - CTimeCycle::CalcColoursForPoint
-    HorizontAngles_BackTo = pGTASA + BYVER(0x41FFCC + 0x1, 0x503AE4);
-    Hours_BackTo = pGTASA + BYVER(0x41F082 + 0x1, 0x502C90);
-    aml->Redirect(pGTASA + BYVER(0x41FFB8 + 0x1, 0x503ACC), (uintptr_t)HorizontAngles_Inject);
-    aml->Redirect(pGTASA + BYVER(0x41F076 + 0x1, 0x502C80), (uintptr_t)Hours_Inject);
+    HorizontAngles_BackTo = pGTASA + BYBIT(0x41FFCC + 0x1, 0x503AE4);
+    Hours_BackTo = pGTASA + BYBIT(0x41F082 + 0x1, 0x502C90);
+    aml->Redirect(pGTASA + BYBIT(0x41FFB8 + 0x1, 0x503ACC), (uintptr_t)HorizontAngles_Inject);
+    aml->Redirect(pGTASA + BYBIT(0x41F076 + 0x1, 0x502C80), (uintptr_t)Hours_Inject);
 
-    ModuloPatch1_BackTo = pGTASA + BYVER(0x41F0D2 + 0x1, 0x502CFC);
-    ModuloPatch2_BackTo = pGTASA + BYVER(0x41F122 + 0x1, 0x502D38);
-    aml->Redirect(pGTASA + BYVER(0x41F0C0 + 0x1, 0x502CEC), (uintptr_t)ModuloPatch1_Inject);
-    aml->Redirect(pGTASA + BYVER(0x41F112 + 0x1, 0x502D20), (uintptr_t)ModuloPatch2_Inject);
+    ModuloPatch1_BackTo = pGTASA + BYBIT(0x41F0D2 + 0x1, 0x502CFC);
+    ModuloPatch2_BackTo = pGTASA + BYBIT(0x41F122 + 0x1, 0x502D38);
+    aml->Redirect(pGTASA + BYBIT(0x41F0C0 + 0x1, 0x502CEC), (uintptr_t)ModuloPatch1_Inject);
+    aml->Redirect(pGTASA + BYBIT(0x41F112 + 0x1, 0x502D20), (uintptr_t)ModuloPatch2_Inject);
 
-    aml->Write(pGTASA + BYVER(0x41F104 + 0x2, 0x502D14 + 0x1), BYVER("\x18", "\x61"), 1);
+    aml->Write(pGTASA + BYBIT(0x41F104 + 0x2, 0x502D14 + 0x1), BYBIT("\x18", "\x61"), 1);
     //aml->Write(pGTASA + 0x41FD4A, (uintptr_t)"\x00", sizeof(char));
     //aml->Write(pGTASA + 0x41FD4C, (uintptr_t)"\x15", sizeof(char));
 
-    #ifdef AML32
+  #ifdef AML32
     aml->PlaceNOP(pGTASA + 0x41F0D6, 2);
     aml->PlaceNOP(pGTASA + 0x41F0E4, 2);
     aml->PlaceNOP(pGTASA + 0x41F108, 2);
-    #else
+  #else
     aml->PlaceNOP(pGTASA + 0x502D18, 1);
-    #endif
+  #endif
 
     // - CTimeCycle::StartExtraColour
-    HOOKPLT(StartExtraColour, pGTASA + BYVER(0x671F24, 0x843670));
+    HOOKPLT(StartExtraColour, pGTASA + BYBIT(0x671F24, 0x843670));
 }
